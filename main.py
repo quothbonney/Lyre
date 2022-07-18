@@ -4,8 +4,9 @@ import librosa, librosa.display
 import numpy as np
 import wave
 from scipy.io import wavfile
+from scipy.signal import find_peaks
 
-violin_wav = "samples/chords.wav"
+violin_wav = "samples/violin_c.wav"
 sax_wav = "samples/sax.wav"
 
 
@@ -19,6 +20,7 @@ class AudioSignal:
 
         self.spectrum = Spectrum(self.signal, self.sr)
 
+
 class Spectrum:
     def __init__(self, signal, samples):
         self.signal = signal
@@ -26,13 +28,20 @@ class Spectrum:
 
         # Absolute value of complex conjugate from Fourier
         self.spectrum = np.absolute(np.fft.fft(self.signal))
-
+        
+        # Scipy signal peaks method
+        # Distance = min distance between peaks, prominence = vertical min distance, threshold = general thresh
+        f_bins = int(len(self.spectrum)*0.1)
+        self.peaks, _ = find_peaks(self.spectrum[:f_bins], distance=30, prominence=10, threshold=0.9)
 
     def plot_magnitude_spectrum(self, title, f_ratio=0.1):
         plt.figure(figsize=(18, 5))
 
         f = np.linspace(0, self.sr, len(self.spectrum))
         f_bins = int(len(self.spectrum)*f_ratio)
+
+
+        plt.plot(self.peaks, self.spectrum[self.peaks], "xr")
 
         plt.plot(f[:f_bins], self.spectrum[:f_bins])
         plt.xlabel("Frequency (Hz)")
@@ -41,7 +50,8 @@ class Spectrum:
 
 
 if __name__ == '__main__':
-    for i in range(10):
-        audio = AudioSignal(violin_wav, duration=1.0, offset=float(i), sample_override=10000)
+    audio = AudioSignal(violin_wav, duration=1.0, offset=float(1), sample_override=None)
 
-        audio.spectrum.plot_magnitude_spectrum(title=f"{violin_wav} at time {i}")
+    audio.spectrum.plot_magnitude_spectrum(title=f"{violin_wav} at time 0")
+
+    print(audio.spectrum.peaks / audio.spectrum.peaks[0])

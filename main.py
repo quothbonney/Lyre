@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# Open source software written by Jack D.V. Carson 
+
 import os
 import matplotlib.pyplot as plt
 import librosa, librosa.display
@@ -5,10 +8,13 @@ import numpy as np
 import wave
 from scipy.io import wavfile
 from scipy.signal import find_peaks
-from math import floor
+from src.notesdict import get_dict
+import sys
 
-violin_wav = "samples/chords.wav"
-sax_wav = "samples/sax.wav"
+
+violin_wav = sys.argv[1]
+
+notes = get_dict()
 
 
 class AudioSignal:
@@ -33,9 +39,10 @@ class Spectrum:
         # Scipy signal peaks method
         # Distance = min distance between peaks, prominence = vertical min distance, threshold = general thresh
         f_bins = int(len(self.spectrum)*0.1)
-        self.peaks, _ = find_peaks(self.spectrum[:f_bins], distance=30, prominence=10, threshold=0.9)
+        self.peaks, _ = find_peaks(self.spectrum[:f_bins], distance=10, prominence=100, threshold=1.1)
 
         self.freqs = []
+        self.weights = []
         self.isolate(self.peaks)
 
     def plot_magnitude_spectrum(self, title, f_ratio=0.1):
@@ -59,23 +66,35 @@ class Spectrum:
             multiple = peak/pks[0]
             val = abs(multiple - round(multiple))
             
-            if val < 0.2: conf.append(val)
+            if val < 0.02: conf.append(val)
             else: others.append(peak)
         
-        if len(conf) > 3: self.freqs.append(pks[0])
+        if len(conf) > 2: 
+            self.freqs.append(pks[0])
+            self.weights.append(sum(self.spectrum[pks]))
 
         if len(others) != 0:
             self.isolate(others)
 
 
+    def notes(self):
+        # Funky one liner that turns the self.freqs array into an array of its closest entries in dict notes
+        note_array = [min(notes, key=lambda x:abs(x - m)) for m in self.freqs]
+
+        # Converts to the string key-value pair
+        new_array = [notes[m] for m in note_array]
+
+        print(new_array)
 
 
 
 
 
 if __name__ == '__main__':
-    audio = AudioSignal(violin_wav, duration=1.0, offset=float(4), sample_override=None)
+    audio = AudioSignal(violin_wav, duration=1.0, offset=float(0), sample_override=None)
 
     audio.spectrum.plot_magnitude_spectrum(title=f"{violin_wav} at time 0")
-    
+   
+    print(audio.spectrum.weights)
     print(audio.spectrum.freqs)
+    print(audio.spectrum.notes())
